@@ -1,35 +1,47 @@
 # FullMouth LLM NER pipeline (prompt generation + inference)
 
-This folder contains a two-stage pipeline for extracting dental NER entities from clinical notes using *local* LLMs (HuggingFace `transformers`).
+This folder contains a two-stage pipeline for extracting dental NER entities from clinical notes using local LLMs via HuggingFace `transformers`.
 
-- **Stage A: prompt generation** (`LLMs_prompt_generation.py`) generates and evaluates instruction prompts per entity.
-- **Stage B: inference** (`LLMs_inferences.py`) runs ensemble screening + extraction using the generated prompts.
+- Stage A: prompt generation (LLMs_prompt_generation.py) generates and evaluates instruction prompts per entity.
+- Stage B: inference (LLMs_inferences.py) runs entity screening + extraction using the saved prompts.
 
-The `.sh` files (`prompt_generation.sh`, `llm_inference.sh`) are thin wrappers with example arguments.
+Shell wrappers (prompt_generation.sh, llm_inference.sh) are provided as runnable examples, but their default paths are FullMouth-environment specific (e.g., /home/FullMouth/...).
 
-## Folder contents
+## What’s in this folder
 
-- `LLMs_prompt_generation.py`: generate `instruct_prompt_dict.json`.
-- `LLMs_inferences.py`: run inference and write per-note JSON outputs with a `pred` field.
-- `SFT-int4.ipynb`: supervised fine-tuning (SFT) with QLoRA + 4-bit quantization (TRL `SFTTrainer`).
-- `DPO_reward_init.ipynb`: builds DPO preference pairs (`chosen`/`rejected`) from predictions vs gold.
-- `DPO_training.ipynb`: DPO training with QLoRA + 4-bit quantization (TRL `DPOTrainer`).
-- `function_util.py`: shared CLI (`parse_args`) and LLM / batching / evaluation utilities.
-- `fullmouth_util.py`: constants and label schema loader (`FM_label`).
-- `convert_note2sent.py`: utility to convert raw `.txt` notes to sentence-level `.json` (useful as inference input).
-- `config.yml`: **required**; contains `model_root` for local model paths.
+Entry points
 
-## Requirements
+- LLMs_prompt_generation.py: builds dst_root/version/<target_dir>/instruct_prompt_dict.json
+- LLMs_inferences.py: reads that instruct_prompt_dict.json and writes per-note JSON outputs with a pred field
+- convert_note2sent.py: converts raw .txt notes to sentence-level .json suitable for inference input
 
-- Linux + NVIDIA GPU recommended.
-- Python environment with (at minimum): `torch`, `transformers`, `pyyaml`, `scikit-learn`, `rapidfuzz`, `tqdm`.
-- A local model directory under `model_root` (see config section).
+Core utilities / schema
 
-Important: entity schema is loaded from absolute paths in `fullmouth_util.py` (e.g., `/home/FullMouth/GUI/label_v4.pkl`). If your environment differs, update those paths.
+- function_util.py: CLI args (parse_args) + model init + batching + evaluation helpers
+- fullmouth_util.py: constants and schema loader (FM_label)
+- label_v4_1.json: the entity schema + descriptions used by FM_label (loaded via relative path)
 
-## Configuration (`config.yml`)
+Config / deps
 
-Both Python entrypoints require a `config.yml` in the current working directory.
+- config.yml: required at runtime; at minimum contains model_root for local model paths
+- requirements.txt: baseline runtime dependencies for prompt generation / inference
+
+Fine-tuning (optional)
+
+- SFT_DPO/: notebooks + extra requirements for QLoRA SFT and DPO
+    - SFT_DPO/SFT-int4.ipynb
+    - SFT_DPO/DPO_reward_init.ipynb
+    - SFT_DPO/DPO_training.ipynb
+    - SFT_DPO/requirements-sft_dpo.txt
+
+Misc
+
+- __req_scan_py/: copies of the main scripts (used for dependency scanning in some environments)
+- LICENSE
+
+## Setup
+
+1) Create / edit config.yml in this directory (the scripts require it in the current working directory)
 
 Minimal example:
 
@@ -37,13 +49,24 @@ Minimal example:
 model_root: /data_sys/lang_model
 ```
 
-This repo includes extra keys (`root_dir`, `src_txt_root`) that may be used by other scripts; the two main entrypoints only require `model_root`.
+The checked-in config.yml also includes keys like root_dir and src_txt_root that may be used by other tools, but the two main entry points only require model_root.
+
+2) Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+Notes:
+
+- requirements.txt pins torch/transformers versions for the FullMouth runtime. If you’re not on the same CUDA / driver stack, you may need to adjust torch accordingly.
+- Models are loaded with local_files_only=True. Make sure the model exists on disk under model_root.
 
 ## Data formats
 
-### Training JSON format (Stage A)
+Stage A input (training json)
 
-`LLMs_prompt_generation.py` expects a directory of `.json` files, each containing a list of sentence records like:
+LLMs_prompt_generation.py expects a directory of .json files, each containing a list of sentence records like:
 
 ```json
 {
@@ -54,39 +77,33 @@ This repo includes extra keys (`root_dir`, `src_txt_root`) that may be used by o
 }
 ```
 
-### Inference JSON format (Stage B)
+Stage B input (inference json)
 
-`LLMs_inferences.py` expects a directory of `.json` files, each containing a list of records with at least:
+LLMs_inferences.py expects a directory of .json files, each containing a list of records with at least:
 
 ```json
 { "sentence": "..." }
 ```
 
-The script writes a `pred` field per sentence:
+The script writes a pred field per sentence for entities that were predicted:
 
 ```json
 { "pred": {"Age": ["16 y/o"], "Gender": ["male"]} }
 ```
 
-`convert_note2sent.py` can produce this inference-ready JSON from raw `.txt` notes.
+convert_note2sent.py can produce this inference-ready JSON from raw .txt notes.
 
 ## Quickstart
 
-Run everything from this folder so the scripts can find `config.yml`:
-
-```bash
-cd FullMouth/code/github
-```
-
 ### Stage A — generate instruction prompts
 
-Option 1 (recommended): use the wrapper:
+Option 1: wrapper script (edit paths inside the .sh file as needed)
 
 ```bash
 bash prompt_generation.sh
 ```
 
-Option 2: run Python directly (example):
+Option 2: run Python directly (example)
 
 ```bash
 python LLMs_prompt_generation.py \
@@ -95,21 +112,25 @@ python LLMs_prompt_generation.py \
     --dst_root /home/FullMouth/data/ \
     --gpu_num 0 --base_model Qwen2.5-7B-Instruct \
     --num_of_instructions 3 --instruction_length 500 --validation_threshold 0.8 \
-    --add_stop_token --model_input_limit_ratio 0.8 \
+    --model_input_limit_ratio 0.8 \
     --revised_training_set --include_description --include_examples --error_feedback_in_loop
 ```
 
-Outputs are written under:
+Outputs
 
-`<dst_root>/<version>/<model-flags-dir>/instruct_prompt_dict.json`
+- Prompt artifacts (including instruct_prompt_dict.json) are written under:
+    - <dst_root>/<version>/<target_dir>/
+- target_dir is derived from base_model plus flags (see get_model_name() in function_util.py)
 
 ### Stage B — run inference
+
+Option 1: wrapper script (edit paths inside the .sh file as needed)
 
 ```bash
 bash llm_inference.sh
 ```
 
-Or directly:
+Option 2: run Python directly (example)
 
 ```bash
 python LLMs_inferences.py \
@@ -118,105 +139,55 @@ python LLMs_inferences.py \
     --dst_root /home/FullMouth/data/ \
     --num_of_instructions 3 --validation_threshold 0.9 \
     --result_type_dir gold_prompt \
-    --add_stop_token --model_input_limit_ratio 0.8 \
+    --model_input_limit_ratio 0.8 \
     --revised_training_set --include_description --include_examples --error_feedback_in_loop
 ```
 
-This reads `instruct_prompt_dict.json` from Stage A and writes predictions into:
+Outputs
 
-`<dst_root>/<version>/<model-flags-dir>/<result_type_dir>_<postfix>/*.json`
+- The script reads instruct_prompt_dict.json from:
+    - <dst_root>/<version>/<target_dir>/instruct_prompt_dict.json
+- It creates selected prompts at:
+    - <dst_root>/<version>/<target_dir>/selected_prompt_<postfix>.json
+- It writes predictions to:
+    - <dst_root>/<version>/<target_dir>/<result_type_dir>_<postfix>/*.json
 
-Where `<postfix>` looks like `3instructs09` (derived from `num_of_instructions` and `validation_threshold`).
+Where postfix is computed as:
+
+- <postfix> = <num_of_instructions>instructs<validation_threshold-without-dot>
+    - example: 3instructs09 for validation_threshold=0.9
 
 ## Notes / gotchas
 
-- `LLMs_inferences.py` requires `--result_type_dir` (it is used to name the output folder).
-- Both entrypoints set `CUDA_VISIBLE_DEVICES` internally based on `--gpu_num`.
-- Models are loaded with `local_files_only=True`. If the model isn’t present under `model_root`, loading will fail.
-- `--model_name` / `--checkpoint_dir` change *which model weights are loaded*, but output folders are still named from `--base_model` plus the prompt-related flags (see `get_model_name()` in `function_util.py`). If you use these options, rely on the script’s printed `model_dir` / `Source model dir path` to confirm paths.
+- gpu_num is required by the CLI and is used to set CUDA_VISIBLE_DEVICES inside the scripts.
+- If you pass --model_name for inference, the model path becomes <model_root>/<version>/<model_name> (intended for SFT/DPO outputs). Otherwise it loads <model_root>/<base_model>.
+- The pred field is only added for sentences/entities that pass the “checkInstruction” vote; absence of pred means “no prediction written”, not necessarily a negative label.
 
-## Fine-tuning pipelines (SFT + DPO)
+## Optional: SFT + DPO notebooks
 
-This folder also includes an optional fine-tuning workflow implemented as notebooks:
+The fine-tuning workflow is under SFT_DPO/ and is designed for the FullMouth environment (it contains hard-coded paths like /home/FullMouth/... that you’ll likely need to edit).
 
-1) **SFT (supervised fine-tuning)** to teach the model the “checkInstruction” and “resultsInstruction” behaviors.
-2) **DPO (Direct Preference Optimization)** to further optimize the model using preference pairs created from model mistakes.
+Install notebook-only deps with:
 
-These notebooks are designed for the FullMouth environment and include hard-coded paths like `%cd /home/FullMouth/code` and dataset roots under `/home/FullMouth/data/...`. Expect to edit paths before running elsewhere.
-
-### Dependencies (notebooks)
-
-In addition to the inference/prompt-generation deps, the SFT/DPO notebooks use:
-
-- `datasets` (HF)
-- `trl` (for `SFTTrainer`, `DPOTrainer`)
-- `peft` (LoRA / QLoRA)
-- `bitsandbytes` (4-bit quantization via `BitsAndBytesConfig`)
-
-Some notebook configs set `attn_implementation="flash_attention_2"`; if your environment doesn’t have FlashAttention, disable it in the notebook.
-
-### SFT: `SFT-int4.ipynb`
-
-What it does:
-
-- Loads `selected_prompt_<postfix>.json` (the top-N prompts per entity) from a prompt-generation run.
-- Builds supervised examples for both:
-    - **checkInstruction**: message list + gold answer (`Yes`/`No`)
-    - **resultsInstruction**: message list + gold JSON output (`{ "sentence": ..., "entity_ls": [...] }`)
-- Writes the SFT datasets under the model’s `data_dir`:
-    - `SFT_training_data.json`
-    - `SFT_val_data.json`
-- Fine-tunes a base model using **QLoRA (LoRA + 4-bit NF4)** via TRL `SFTTrainer`.
-
-Key paths/outputs (as written in the notebook):
-
-- `data_dir`: `/home/FullMouth/data/instruct_<version>/<model_name>`
-- `selected_prompt_fp`: `${data_dir}/selected_prompt_<num>instructs<threshold>.json`
-- `model_output_dir`: `/data_sys/lang_model/<version>/<model_name>`
-
-### DPO data creation: `DPO_reward_init.ipynb`
-
-What it does:
-
-- Loads a folder of model predictions (`*.json`) that contain `pred` per sentence.
-- Loads the corresponding gold training JSON from `/home/FullMouth/data/<json_fn>`.
-- For mismatches, creates DPO preference pairs for both:
-    - **resultsInstruction**: `chosen` = gold entities, `rejected` = model prediction (or `{}`)
-    - **checkInstruction**: `chosen` = correct `Yes/No`, `rejected` = incorrect `Yes/No`
-- Writes per-file DPO cases to `output_dir`, then compiles them into:
-    - `dpo_data_train.jsonl`
-    - `dpo_data_val.jsonl`
-
-The generated DPO units are JSON-lines of the form:
-
-```json
-{"prompt": [...chat messages...], "chosen": [...assistant msg...], "rejected": [...assistant msg...]}
+```bash
+pip install -r SFT_DPO/requirements-sft_dpo.txt
 ```
-
-### DPO training: `DPO_training.ipynb`
-
-What it does:
-
-- Loads `dpo_data_train.jsonl` and `dpo_data_val.jsonl` created above.
-- Loads a base model from a local directory (example pattern in the notebook):
-    - `load_model_dir = /data_sys/lang_model/<version>/<model_name>_<model_settings>`
-- Trains with TRL `DPOTrainer` using QLoRA + 4-bit NF4.
-- Saves the trained output to:
-    - `model_output_dir = load_model_dir + "_DPO"`
-
-### Using SFT/DPO models with inference
-
-`LLMs_inferences.py` supports loading from `<model_root>/<version>/<model_name>` when you pass `--model_name <model_name>` (and the same `--version`). That matches the SFT notebook’s output layout (`/data_sys/lang_model/<version>/<model_name>`).
 
 ## Utility: convert raw notes to JSON
 
-`convert_note2sent.py` converts `.txt` notes to sentence-level `.json` suitable as inference input:
+convert_note2sent.py converts .txt notes to sentence-level .json suitable as inference input:
 
 ```bash
 python convert_note2sent.py \
     --text_data_dir /home/FullMouth/data/dataset/test_notes/ \
-    --gpu_num 0 --combined_sentences True
+    --output_dir /home/FullMouth/data/dataset/test_notes_json/ \
+    --gpu_num 0 \
+    --combined_sentences True
 ```
 
-It requires spaCy and the `en_core_web_trf` model.
+It requires spaCy and the en_core_web_trf model:
+
+```bash
+python -m spacy download en_core_web_trf
+```
 
