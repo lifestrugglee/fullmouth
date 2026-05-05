@@ -18,14 +18,12 @@ def write_json(data: Any, file_path: str | Path) -> None:
     with path.open("w", encoding="utf-8") as file:
         json.dump(data, file, indent=4, ensure_ascii=False)
 
-
 def load_json(file_path: str | Path) -> Any:
     """Load JSON data from a file."""
     path = Path(file_path)
 
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
-
 
 def savePickle(file_name:str, obj):
     with open(file_name, 'wb') as handle:
@@ -265,15 +263,6 @@ def add_position2entity_dict(entity_dict, note):
             entity_dict[entity] = new_ls
     return entity_dict
 
-# def is_similarity(compared_entity:str, entity_ls:list, threshold=80) -> bool:
-#     result = False
-#     for entity in entity_ls:
-#         similarity = fuzz.partial_ratio(compared_entity, entity)
-#         if similarity >= threshold:
-#             result = True
-#             break
-#     return result
-
 def is_similarity(compared_entity: str, entity_ls: list, threshold: int = 80):
     """
     Returns (is_match, best_index) where:
@@ -289,7 +278,6 @@ def is_similarity(compared_entity: str, entity_ls: list, threshold: int = 80):
             best_idx = i
 
     return (best_score >= threshold, best_idx)
-
 
 # Functions
 def get_instruction_data(entity_dict_list):

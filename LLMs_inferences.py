@@ -101,7 +101,6 @@ def main(model_dir):
                     gold_content_ls[sent_idx][PRED] = {}
                 gold_content_ls[sent_idx][PRED][entity] = e_data.entity_ls
 
-
         # ------------------------------------------------------
         write_json(gold_content_ls, dst_json_fp)
         end_time = time.time()
@@ -121,7 +120,6 @@ if __name__ == "__main__":
 
     model_root = config['model_root']
 
-
     # Apply arguments
     args = parse_args()
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -136,4 +134,3 @@ if __name__ == "__main__":
         model_dir = os.path.join(model_dir, args.checkpoint_dir)
     
     main(model_dir)
-    # print(model_dir)

@@ -68,9 +68,6 @@ model_max_window = -1
 TF_MAX_NEW_TOKENS = 1
 OUTPUT_MULTIPLIER = 3
 
-
-
-
 # Functions 1/ 3 ########################################################################################
 def setup_logger(log_fp, logger_name='FullMouth', max_bytes=10*1024*1024, backup_count=5):
     """Configure logger with rotation support."""

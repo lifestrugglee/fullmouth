@@ -14,5 +14,5 @@ python LLMs_prompt_generation.py \
     --gpu_num $gpu_num --base_model $base_model \
     --num_of_instructions $num_of_instructs --instruction_length 500 --validation_threshold $validation_threshold \
     --add_stop_token --model_input_limit_ratio $model_input_ratio \
-    --revised_training_set --include_description --include_examples \
+    --revised_training_set --include_description --include_examples --error_feedback_in_loop
     

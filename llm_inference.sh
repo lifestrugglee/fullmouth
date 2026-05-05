@@ -16,5 +16,5 @@ validation_threshold=0.9
     --test_dir $test_dir --dst_root $save_root_dir \
     --num_of_instructions $selected_instructs --validation_threshold $validation_threshold \
     --add_stop_token --model_input_limit_ratio $model_input_ratio \
-    --revised_training_set --include_description --include_examples \
+    --revised_training_set --include_description --include_examples --error_feedback_in_loop \
     --result_type_dir "gold_prompt" 
