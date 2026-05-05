@@ -1,0 +1,3 @@
+root_dir: /home/FullMouth
+src_txt_root: /home/FullMouth/data/notes/UTH_notes_type_filter
+model_root: /data_sys/lang_model
