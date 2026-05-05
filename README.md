@@ -130,7 +130,6 @@ Where `<postfix>` looks like `3instructs09` (derived from `num_of_instructions` 
 
 ## Notes / gotchas
 
-- `LLMs_prompt_generation.py` currently iterates only over the first two entities (`fm_label.gold_entity_ls[:2]`). If you intend to generate prompts for *all* entities, remove the `[:2]` slice in the script.
 - `LLMs_inferences.py` requires `--result_type_dir` (it is used to name the output folder).
 - Both entrypoints set `CUDA_VISIBLE_DEVICES` internally based on `--gpu_num`.
 - Models are loaded with `local_files_only=True`. If the model isn’t present under `model_root`, loading will fail.
@@ -220,3 +219,4 @@ python convert_note2sent.py \
 ```
 
 It requires spaCy and the `en_core_web_trf` model.
+

@@ -53,7 +53,7 @@ def main():
     instruct_prompt_dict = {}
     if os.path.exists(instruct_prompt_dict_fp): instruct_prompt_dict = load_json(instruct_prompt_dict_fp)
 
-    for key_entity in fm_label.gold_entity_ls[:2]:
+    for key_entity in fm_label.gold_entity_ls:
         key_entity_desc = fm_label.get_entity_description(key_entity) if args.include_description else None
         entity_data, no_entity_data = get_entity_data(data_ls, key_entity)
 

@@ -89,28 +89,18 @@ HALU  = 'Hallu'
 #                     "gpt-4o":"gpt-4o",
 #                     }
 
-label_fp = r'/home/FullMouth/GUI/label_v4.pkl'
+label_fp = r'./label_v4_1.json'
 COMMENTS = 'comments'
 DESC = 'desc'
 IS_INCLUDE = 'is_include'
 
 class FM_label:
-    def __init__(self,  version='v4'):#pickle_path=label_fp,
-        if version == 'v3':
-            pickle_path = r'/home/FullMouth/GUI/old_label/label_v3.pkl'
-        elif version == 'v4':
-            pickle_path = r'/home/FullMouth/GUI/label_v4.pkl'
-        elif version == 'v4_1':
-            pickle_path = r'/home/FullMouth/GUI/label_v4_1.pkl'
-        else:
-            raise ValueError(f'Unsupported version: {version}')
-        self.gold_entity_dict = loadPickle(pickle_path)
+    def __init__(self):
+        label_fp = r'./label_v4_1.json'
+        assert os.path.exists(label_fp), f"Label file not found at {label_fp}. Please ensure the label file exists."
+        self.gold_entity_dict = load_json(label_fp)
         self.gold_entity_desc_dict = {}
         self.gold_entity_ls = self.get_gold_entity_ls(self.gold_entity_dict)
-        
-        # label_fp = r'/home/FullMouth/GUI/old_label/label_v3.pkl'
-        # self.gold_entity_dict_v3 = loadPickle(label_fp)
-        # self.gold_entity_ls_v3 = self.gold_entity_dict_v3.keys()
 
         self.exclude_old_entity_ls = [
             "Furcation involvement", "TMJ", "Periodontal Charting Indices", 

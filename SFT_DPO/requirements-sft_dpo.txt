@@ -1,0 +1,10 @@
+datasets==3.6.0
+matplotlib==3.10.9
+numpy==2.4.4
+pandas==3.0.2
+peft==0.18.1
+scikit_learn==1.8.0
+torch==2.6.0a0+ecf3bae40a.nv25.1
+tqdm==4.67.3
+transformers==5.2.0
+trl==0.26.2
