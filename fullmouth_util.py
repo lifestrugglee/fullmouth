@@ -1,5 +1,5 @@
 from rapidfuzz import fuzz
-from typing import Iterable, List, Callable, Optional
+from typing import Iterable, List, Callable, Optional, Any
 from collections import defaultdict
 import re
 import pickle
@@ -7,6 +7,25 @@ import random
 import importlib
 import os
 import sys
+
+import json
+from pathlib import Path
+
+def write_json(data: Any, file_path: str | Path) -> None:
+    """Write Python data to a JSON file."""
+    path = Path(file_path)
+
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(data, file, indent=4, ensure_ascii=False)
+
+
+def load_json(file_path: str | Path) -> Any:
+    """Load JSON data from a file."""
+    path = Path(file_path)
+
+    with path.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
 
 def savePickle(file_name:str, obj):
     with open(file_name, 'wb') as handle:
@@ -168,7 +187,7 @@ def get_txt_section_from_reshaped(gold_content_ls:list, level_idx_name='text_seg
 
     return collect_ls
 
-def find_entity_locations(fn: str, text: str, entity_dict: dict, nlp) -> list:
+def find_entity_locations(fn: str, text: str, entity_dict: dict, nlp, combined_sentences: bool = False) -> list[dict]:
     '''
     Returns a list like:
     [
@@ -191,9 +210,19 @@ def find_entity_locations(fn: str, text: str, entity_dict: dict, nlp) -> list:
 
     for text_segment_index, text_segment in enumerate(text_ls):
         doc = nlp(text_segment)
-        sentences = list(doc.sents)  # Split into sentences
-        for i, sentence in enumerate(sentences):
-            sentence_text = sentence.text
+        sentences = [sent.text for sent in doc.sents]  # Split into sentences
+        if combined_sentences:
+            merged_sentences = []
+
+            for sentence_text in sentences:
+                if len(sentence_text) < 100 and merged_sentences:
+                    merged_sentences[-1] = f"{merged_sentences[-1]} {sentence_text}"
+                else:
+                    merged_sentences.append(sentence_text)
+            sentences = merged_sentences[:]
+
+        for i, sentence_text in enumerate(sentences):
+            # sentence_text = sentence
             one_sent_dict = {
                             ENTITY_DICT: {},
                             "file_name": fn,

@@ -6,21 +6,17 @@ import shutil
 from glob import glob
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-
+import yaml
 from function_util import *
 
 from fullmouth_util import (
-    INSTRUCT_PROMPT, EVAL_MTX, TEST_MTX, loadPickle, savePickle, is_similarity
+    INSTRUCT_PROMPT, EVAL_MTX, TEST_MTX, is_similarity, write_json, load_json
 )
-
-root_dir = r'/home/FullMouth'
-src_txt_root = r'/home/FullMouth/data/notes/UTH_notes_type_filter'
-model_root = r'/data_sys/lang_model'
 
 ########################################################################################
 def main():
     target_dir = get_model_name(args.base_model, args)
-    dst_dir = os.path.join(r'/home/FullMouth/data', f'instruct_{args.version}', target_dir)
+    dst_dir = os.path.join(args.dst_root, args.version, target_dir)
     #####################################################################
     # Reset everytime
     if args.reset: 
@@ -29,7 +25,7 @@ def main():
     #####################################################################
     Path(dst_dir).mkdir(parents=True, exist_ok=True)
 
-    run_name = f'instruct_{args.version}_{target_dir}'
+    run_name = f'{args.version}_{target_dir}'
 
     # Configure logging
     current_time = time.strftime("%Y%m%d_%H%M")
@@ -42,13 +38,12 @@ def main():
     log_msg("*"*20, print_message=False)
     llms_setup(model_dir, args)
 
-    training_dir = r'/home/FullMouth/data/annotation_v4/training_data_swap_revised'
-    pkl_fp_ls = glob(os.path.join(training_dir, '*.pkl'))
+    json_fp_ls = glob(os.path.join(args.train_data_path, '*.json'))
 
     data_ls = []
-    for pkl_fp in pkl_fp_ls:
-        data_ls.extend(loadPickle(pkl_fp))
-    log_msg(f'Training set size: {len(pkl_fp_ls)} with {len(data_ls)} sentencess')
+    for json_fp in json_fp_ls:
+        data_ls.extend(load_json(json_fp))
+    log_msg(f'Training set size: {len(json_fp_ls)} with {len(data_ls)} sentencess')
     '''
     data_ls example:
     [{'sent': 'D: 16 y/o male presents with father for Recall.',
@@ -56,11 +51,11 @@ def main():
     'entity_ls': ['Age', 'Gender'],
     'entity_dict': {'Age': ['16 y/o'], 'Gender': ['male']}},
     '''
-    instruct_prompt_dict_fp = os.path.join(dst_dir, 'instruct_prompt_dict.pkl')
+    instruct_prompt_dict_fp = os.path.join(dst_dir, 'instruct_prompt_dict.json')
     instruct_prompt_dict = {}
-    if os.path.exists(instruct_prompt_dict_fp): instruct_prompt_dict = loadPickle(instruct_prompt_dict_fp)
+    if os.path.exists(instruct_prompt_dict_fp): instruct_prompt_dict = load_json(instruct_prompt_dict_fp)
 
-    for key_entity in fm_label.gold_entity_ls:
+    for key_entity in fm_label.gold_entity_ls[:2]:
         key_entity_desc = fm_label.get_entity_description(key_entity) if args.include_description else None
         entity_data, no_entity_data = get_entity_data(data_ls, key_entity)
 
@@ -219,13 +214,21 @@ def main():
 
         log_msg(f"Execution time: {execution_time:.1f} seconds", indent_level=indent_level)
         instruct_prompt_dict[key_entity]['exec_time'] = execution_time
-        savePickle(instruct_prompt_dict_fp, instruct_prompt_dict)
+        print(instruct_prompt_dict)
+        write_json(instruct_prompt_dict, instruct_prompt_dict_fp)
         printTokensUpdate()
 
     final_msg = f"{run_name} - Completed"
     log_msg(final_msg)
 
 if __name__ == "__main__":
+
+    assert os.path.exists("config.yml"), "config.yml not found. Please create a config.yml file with the required configurations."
+    with open("config.yml", "r") as file:
+        config = yaml.safe_load(file)
+
+    model_root = config['model_root']
+    
     args = parse_args()
     
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"

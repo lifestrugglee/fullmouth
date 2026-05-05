@@ -210,7 +210,8 @@ def instruct_prompt_preparation(args: argparse.Namespace, instruct_dict: dict, e
         entity_prompt_dict = {}
         fail_entity_prompt_dict = {}
         for idx, prompt_dict in instruct_dict[entity].items():
-            if isinstance(idx, int):
+            if isinstance(idx, int) or (isinstance(idx, str) and idx.isdigit()):
+                idx = int(idx)
                 if TEST_MTX not in prompt_dict:
                     # for v3, only
                     raise ValueError(f"{TEST_MTX} not found in prompt_dict for {entity} idx {idx}")
@@ -433,8 +434,8 @@ def evaluate_mixed_entity_extraction(x_data, result_dict, is_similarity):
         'pos_sent_total': pos_sent_total,
         'pos_sent_exact_correct': pos_sent_exact_correct,
         'pos_sent_exact_acc': pos_sent_exact_acc,
-        'pos_error_cases': pos_error_cases,
-        'neg_error_cases': neg_error_cases,
+        # 'pos_error_cases': pos_error_cases,
+        # 'neg_error_cases': neg_error_cases,
     }
 
 
@@ -1508,7 +1509,7 @@ def parse_args(args_list=None):
     # Argument parser setup
     parser = argparse.ArgumentParser(description="Model initialization script")
 
-    parser.add_argument("--version",  type=str, required=True, help="Version string, e.g., 'v2'")
+    parser.add_argument("--version",  type=str, required=True, help="Version string or project name, e.g., 'v2', 'xxx_project'")
 
     parser.add_argument("--gpu_num",    type=str, required=True, help="GPU number (e.g., '0')")
     parser.add_argument("--device",     type=str, help="Device to use (e.g., 'cuda')")
@@ -1518,10 +1519,13 @@ def parse_args(args_list=None):
     parser.add_argument("--model_path", type=str, default=None, help="Path to the model directory")
     parser.add_argument("--model_input_limit_ratio", type=float, default=0.8, help="Ratio of model input limit to use for batch generation")
 
+    parser.add_argument("--train_data_path", type=str, default=None, help="Path to the training json files")
+    parser.add_argument("--dst_root", type=str, default=r"/home/FullMouth/data", help="Directory to save processed data")
     parser.add_argument("--result_type_dir", type=str, default=None, help="Directory to save results - 'gold_dpo', 'gold_sft', 'gold_prompt'")
     parser.add_argument("--checkpoint_dir", type=str, default=None, help="Directory for model checkpoints")
     parser.add_argument("--start_idx", type=int, default=0, help="idx for processing")
     parser.add_argument("--end_idx", type=int, default=-1, help="idx for processing")
+    parser.add_argument("--test_dir", type=str, default=None, help="Directory for test data")
 
     parser.add_argument("--num_of_instructions", type=int, default=1, required=True, help="Number of instruction prompts to generate/use")
     parser.add_argument("--makeup", action="store_true", default=False, help="Flag to enable makeup the number of instruction used")
