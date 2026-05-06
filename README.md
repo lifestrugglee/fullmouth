@@ -1,193 +1,312 @@
-# FullMouth LLM NER pipeline (prompt generation + inference)
+# FullMouth LLM NER Pipeline
 
-This folder contains a two-stage pipeline for extracting dental NER entities from clinical notes using local LLMs via HuggingFace `transformers`.
+FullMouth is a two-stage pipeline for extracting dental named entities from clinical notes with locally hosted large language models (LLMs). It uses Hugging Face `transformers` to generate entity-specific extraction prompts, validate those prompts, and then apply the selected prompts to sentence-level clinical-note data.
 
-- Stage A: prompt generation (LLMs_prompt_generation.py) generates and evaluates instruction prompts per entity.
-- Stage B: inference (LLMs_inferences.py) runs entity screening + extraction using the saved prompts.
+The pipeline is designed for local model execution. Models are loaded from disk with `local_files_only=True`, so you must have the required model checkpoints available under the configured `model_root`.
 
-Shell wrappers (prompt_generation.sh, llm_inference.sh) are provided as runnable examples, but their default paths are FullMouth-environment specific (e.g., /home/FullMouth/...).
+## Pipeline overview
 
-## What’s in this folder
+```text
+Raw or annotated notes
+        │
+        ├── Stage A: Prompt generation
+        │       LLMs_prompt_generation.py
+        │       - generates candidate instructions per entity
+        │       - validates and evaluates instructions
+        │       - saves instruct_prompt_dict.json
+        │
+        └── Stage B: Inference
+                LLMs_inferences.py
+                - loads saved prompts
+                - screens sentences for candidate entities
+                - extracts entity mentions
+                - writes per-note JSON predictions
+```
 
-Entry points
+Stage A learns reusable extraction instructions for each entity type. Stage B uses those instructions to run a two-step extraction process: first a boolean screening pass, then entity extraction for sentences that pass screening.
 
-- LLMs_prompt_generation.py: builds dst_root/version/<target_dir>/instruct_prompt_dict.json
-- LLMs_inferences.py: reads that instruct_prompt_dict.json and writes per-note JSON outputs with a pred field
-- convert_note2sent.py: converts raw .txt notes to sentence-level .json suitable for inference input
+## Repository contents
 
-Core utilities / schema
+### Main entry points
 
-- function_util.py: CLI args (parse_args) + model init + batching + evaluation helpers
-- fullmouth_util.py: constants and schema loader (FM_label)
-- label_v4_1.json: the entity schema + descriptions used by FM_label (loaded via relative path)
+| File | Purpose |
+| --- | --- |
+| `LLMs_prompt_generation.py` | Generates, validates, and saves entity-specific instruction prompts to `<dst_root>/<version>/<target_dir>/instruct_prompt_dict.json`. |
+| `LLMs_inferences.py` | Loads `instruct_prompt_dict.json`, selects prompts, runs screening and extraction, and writes JSON outputs with a `pred` field. |
+| `convert_note2sent.py` | Converts raw `.txt` notes into sentence-level `.json` files suitable for inference. |
 
-Config / deps
+### Utilities and schema
 
-- config.yml: required at runtime; at minimum contains model_root for local model paths
-- requirements.txt: baseline runtime dependencies for prompt generation / inference
+| File | Purpose |
+| --- | --- |
+| `function_util.py` | Command-line parsing, model initialization, batching, generation helpers, and evaluation utilities. |
+| `fullmouth_util.py` | FullMouth constants and schema-loading helpers. |
+| `label_v4_1.json` | Dental NER entity schema and entity descriptions used by `FM_label`. |
 
-Fine-tuning (optional)
+### Configuration and dependencies
 
-- SFT_DPO/: notebooks + extra requirements for QLoRA SFT and DPO
-    - SFT_DPO/SFT-int4.ipynb
-    - SFT_DPO/DPO_reward_init.ipynb
-    - SFT_DPO/DPO_training.ipynb
-    - SFT_DPO/requirements-sft_dpo.txt
+| File | Purpose |
+| --- | --- |
+| `config.yml` | Runtime configuration. At minimum, the main scripts require `model_root`. |
+| `requirements.txt` | Baseline Python dependencies for prompt generation and inference. |
 
-Misc
+### Optional fine-tuning assets
 
-- __req_scan_py/: copies of the main scripts (used for dependency scanning in some environments)
-- LICENSE
+The `SFT_DPO/` directory contains notebooks and dependencies for QLoRA supervised fine-tuning and DPO experiments:
+
+- `SFT_DPO/SFT-int4.ipynb`
+- `SFT_DPO/DPO_reward_init.ipynb`
+- `SFT_DPO/DPO_training.ipynb`
+- `SFT_DPO/requirements-sft_dpo.txt`
+
+These notebooks are environment-specific and may include hard-coded FullMouth paths that need to be edited before use.
 
 ## Setup
 
-1) Create / edit config.yml in this directory (the scripts require it in the current working directory)
+### 1. Create or update `config.yml`
 
-Minimal example:
+The scripts expect `config.yml` to be available in the current working directory. A minimal configuration is:
 
 ```yaml
 model_root: /data_sys/lang_model
 ```
 
-The checked-in config.yml also includes keys like root_dir and src_txt_root that may be used by other tools, but the two main entry points only require model_root.
+The checked-in configuration may include additional keys such as `root_dir` and `src_txt_root`. The two main entry points require `model_root`; other utilities may use the additional values.
 
-2) Install Python dependencies
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Notes:
+The pinned `torch` and `transformers` versions reflect the FullMouth runtime environment. If your CUDA, driver, or Python environment differs, adjust the PyTorch installation accordingly.
 
-- requirements.txt pins torch/transformers versions for the FullMouth runtime. If you’re not on the same CUDA / driver stack, you may need to adjust torch accordingly.
-- Models are loaded with local_files_only=True. Make sure the model exists on disk under model_root.
+### 3. Verify local models
+
+Models are loaded from local paths only. For example, if you run with:
+
+```bash
+--base_model Qwen2.5-7B-Instruct
+```
+
+then the model is expected at:
+
+```text
+<model_root>/Qwen2.5-7B-Instruct
+```
+
+For fine-tuned models passed through `--model_name`, inference expects:
+
+```text
+<model_root>/<version>/<model_name>
+```
 
 ## Data formats
 
-Stage A input (training json)
+### Stage A training input
 
-LLMs_prompt_generation.py expects a directory of .json files, each containing a list of sentence records like:
+`LLMs_prompt_generation.py` expects a directory of `.json` files. Each file should contain a list of sentence records like this:
 
 ```json
 {
-    "sentence": "D: 16 y/o male presents with father for Recall.",
-    "sent_key": ".txt_0_0",
-    "entity_ls": ["Age", "Gender"],
-    "entity_dict": {"Age": ["16 y/o"], "Gender": ["male"]}
+  "sentence": "D: 16 y/o male presents with father for Recall.",
+  "sent_key": ".txt_0_0",
+  "entity_ls": ["Age", "Gender"],
+  "entity_dict": {
+    "Age": ["16 y/o"],
+    "Gender": ["male"]
+  }
 }
 ```
 
-Stage B input (inference json)
+Required fields:
 
-LLMs_inferences.py expects a directory of .json files, each containing a list of records with at least:
+- `sentence`: source sentence text
+- `entity_ls`: list of entity labels present in the sentence
+- `entity_dict`: mapping from entity label to one or more annotated spans
+
+### Stage B inference input
+
+`LLMs_inferences.py` expects a directory of `.json` files. Each file should contain a list of records with at least a `sentence` field:
 
 ```json
-{ "sentence": "..." }
+{
+  "sentence": "D: 16 y/o male presents with father for Recall."
+}
 ```
 
-The script writes a pred field per sentence for entities that were predicted:
+The inference script writes a `pred` field for predicted entities:
 
 ```json
-{ "pred": {"Age": ["16 y/o"], "Gender": ["male"]} }
+{
+  "sentence": "D: 16 y/o male presents with father for Recall.",
+  "pred": {
+    "Age": ["16 y/o"],
+    "Gender": ["male"]
+  }
+}
 ```
 
-convert_note2sent.py can produce this inference-ready JSON from raw .txt notes.
+A missing `pred` field means no prediction was written for that sentence. It does not necessarily mean the sentence was explicitly classified as negative.
 
 ## Quickstart
 
-### Stage A — generate instruction prompts
+The repository includes shell wrappers with example commands. Their default paths are specific to the FullMouth environment, so review and update them before running.
 
-Option 1: wrapper script (edit paths inside the .sh file as needed)
+### Stage A: generate instruction prompts
+
+Run the wrapper:
 
 ```bash
 bash prompt_generation.sh
 ```
 
-Option 2: run Python directly (example)
+Or run Python directly:
 
 ```bash
 python LLMs_prompt_generation.py \
-    --version test_project --reset \
-    --train_data_path /home/FullMouth/data/dataset/training_notes/ \
-    --dst_root /home/FullMouth/data/ \
-    --gpu_num 0 --base_model Qwen2.5-7B-Instruct \
-    --num_of_instructions 3 --instruction_length 500 --validation_threshold 0.8 \
-    --model_input_limit_ratio 0.8 \
-    --revised_training_set --include_description --include_examples --error_feedback_in_loop
+  --version test_project \
+  --reset \
+  --train_data_path /home/FullMouth/data/dataset/training_notes/ \
+  --dst_root /home/FullMouth/data/ \
+  --gpu_num 0 \
+  --base_model Qwen2.5-7B-Instruct \
+  --num_of_instructions 3 \
+  --instruction_length 500 \
+  --validation_threshold 0.8 \
+  --model_input_limit_ratio 0.8 \
+  --revised_training_set \
+  --include_description \
+  --include_examples \
+  --error_feedback_in_loop
 ```
 
-Outputs
+Stage A writes prompt artifacts to:
 
-- Prompt artifacts (including instruct_prompt_dict.json) are written under:
-    - <dst_root>/<version>/<target_dir>/
-- target_dir is derived from base_model plus flags (see get_model_name() in function_util.py)
+```text
+<dst_root>/<version>/<target_dir>/
+```
 
-### Stage B — run inference
+The key output is:
 
-Option 1: wrapper script (edit paths inside the .sh file as needed)
+```text
+<dst_root>/<version>/<target_dir>/instruct_prompt_dict.json
+```
+
+`target_dir` is derived from the base model and selected flags. See `get_model_name()` in `function_util.py` for the exact naming logic.
+
+### Stage B: run inference
+
+Run the wrapper:
 
 ```bash
 bash llm_inference.sh
 ```
 
-Option 2: run Python directly (example)
+Or run Python directly:
 
 ```bash
 python LLMs_inferences.py \
-    --version test_project --gpu_num 6 --base_model Qwen2.5-7B-Instruct \
-    --test_dir /home/FullMouth/data/dataset/test_notes \
-    --dst_root /home/FullMouth/data/ \
-    --num_of_instructions 3 --validation_threshold 0.9 \
-    --result_type_dir gold_prompt \
-    --model_input_limit_ratio 0.8 \
-    --revised_training_set --include_description --include_examples --error_feedback_in_loop
+  --version test_project \
+  --gpu_num 6 \
+  --base_model Qwen2.5-7B-Instruct \
+  --test_dir /home/FullMouth/data/dataset/test_notes \
+  --dst_root /home/FullMouth/data/ \
+  --num_of_instructions 3 \
+  --validation_threshold 0.9 \
+  --result_type_dir gold_prompt \
+  --model_input_limit_ratio 0.8 \
+  --revised_training_set \
+  --include_description \
+  --include_examples \
+  --error_feedback_in_loop
 ```
 
-Outputs
+Stage B reads prompts from:
 
-- The script reads instruct_prompt_dict.json from:
-    - <dst_root>/<version>/<target_dir>/instruct_prompt_dict.json
-- It creates selected prompts at:
-    - <dst_root>/<version>/<target_dir>/selected_prompt_<postfix>.json
-- It writes predictions to:
-    - <dst_root>/<version>/<target_dir>/<result_type_dir>_<postfix>/*.json
-
-Where postfix is computed as:
-
-- <postfix> = <num_of_instructions>instructs<validation_threshold-without-dot>
-    - example: 3instructs09 for validation_threshold=0.9
-
-## Notes / gotchas
-
-- gpu_num is required by the CLI and is used to set CUDA_VISIBLE_DEVICES inside the scripts.
-- If you pass --model_name for inference, the model path becomes <model_root>/<version>/<model_name> (intended for SFT/DPO outputs). Otherwise it loads <model_root>/<base_model>.
-- The pred field is only added for sentences/entities that pass the “checkInstruction” vote; absence of pred means “no prediction written”, not necessarily a negative label.
-
-## Optional: SFT + DPO notebooks
-
-The fine-tuning workflow is under SFT_DPO/ and is designed for the FullMouth environment (it contains hard-coded paths like /home/FullMouth/... that you’ll likely need to edit).
-
-Install notebook-only deps with:
-
-```bash
-pip install -r SFT_DPO/requirements-sft_dpo.txt
+```text
+<dst_root>/<version>/<target_dir>/instruct_prompt_dict.json
 ```
 
-## Utility: convert raw notes to JSON
+It saves selected prompts to:
 
-convert_note2sent.py converts .txt notes to sentence-level .json suitable as inference input:
+```text
+<dst_root>/<version>/<target_dir>/selected_prompt_<postfix>.json
+```
+
+It writes prediction files to:
+
+```text
+<dst_root>/<version>/<target_dir>/<result_type_dir>_<postfix>/*.json
+```
+
+The postfix is computed from the number of instructions and the validation threshold:
+
+```text
+<num_of_instructions>instructs<validation_threshold-without-dot>
+```
+
+For example, `--num_of_instructions 3 --validation_threshold 0.9` produces:
+
+```text
+3instructs09
+```
+
+## Convert raw notes to inference JSON
+
+Use `convert_note2sent.py` to convert raw `.txt` notes into sentence-level `.json` files:
 
 ```bash
 python convert_note2sent.py \
-    --text_data_dir /home/FullMouth/data/dataset/test_notes/ \
-    --output_dir /home/FullMouth/data/dataset/test_notes_json/ \
-    --gpu_num 0 \
-    --combined_sentences True
+  --text_data_dir /home/FullMouth/data/dataset/test_notes/ \
+  --output_dir /home/FullMouth/data/dataset/test_notes_json/ \
+  --gpu_num 0 \
+  --combined_sentences True
 ```
 
-It requires spaCy and the en_core_web_trf model:
+This utility requires spaCy and the transformer English model:
 
 ```bash
 python -m spacy download en_core_web_trf
 ```
 
+## Common command-line options
+
+| Option | Used by | Description |
+| --- | --- | --- |
+| `--version` | Both | Dataset, experiment, or model version namespace. |
+| `--gpu_num` | Both | CUDA device index. The scripts set `CUDA_VISIBLE_DEVICES` internally. |
+| `--base_model` | Both | Base model directory name under `model_root`. |
+| `--model_name` | Inference | Fine-tuned model name. When provided, the model path becomes `<model_root>/<version>/<model_name>`. |
+| `--num_of_instructions` | Both | Number of prompts to generate or use per entity. |
+| `--validation_threshold` | Both | Minimum quality threshold used for validation or prompt selection. |
+| `--instruction_length` | Prompt generation | Target instruction length. |
+| `--model_input_limit_ratio` | Both | Fraction of the model context window to use for batching. |
+| `--revised_training_set` | Prompt generation | Enables LLM-assisted training-set revision. |
+| `--include_description` | Prompt generation | Includes schema descriptions when generating instructions. |
+| `--include_examples` | Prompt generation | Includes examples in prompt-generation context. |
+| `--error_feedback_in_loop` | Prompt generation | Feeds validation errors back into later instruction-generation rounds. |
+| `--result_type_dir` | Inference | Prefix for the output prediction directory. |
+
+## Operational notes
+
+- `--gpu_num` is required by the main scripts.
+- Wrapper scripts are examples, not portable defaults. Edit FullMouth-specific paths such as `/home/FullMouth/...` before running in another environment.
+- Keep `config.yml` in the directory from which you launch the scripts.
+- Make sure local model checkpoints exist before running; the scripts do not download models automatically.
+- The inference pipeline only writes `pred` for entities that pass the screening vote.
+- If you change prompt-generation flags, use the same relevant flags during inference so `target_dir` resolves to the same prompt directory.
+
+## Optional: SFT and DPO
+
+Install notebook-specific dependencies with:
+
+```bash
+pip install -r SFT_DPO/requirements-sft_dpo.txt
+```
+
+Then review the notebooks in `SFT_DPO/`. Update hard-coded paths before running them outside the original FullMouth environment.
+
+## License
+
+See `LICENSE` for licensing information.

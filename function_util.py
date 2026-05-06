@@ -9,14 +9,10 @@ import random
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Any, Optional, Union
 
-try:
-    from py_files.fullmouth_util import (
+
+from fullmouth_util import (
     FM_label, ROUND_THRES, ENTITY_LS, ENTITY_DICT, OUTPUT_FORMAT, SENT, STOP, TEST_MTX
 )
-except ImportError:
-    from fullmouth_util import (
-        FM_label, ROUND_THRES, ENTITY_LS, ENTITY_DICT, OUTPUT_FORMAT, SENT, STOP, TEST_MTX
-    )
 
 fm_label = FM_label()
 
