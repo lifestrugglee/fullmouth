@@ -103,6 +103,23 @@ For fine-tuned models passed through `--model_name`, inference expects:
 
 ## Data formats
 
+preprocess raw clinical `.txt` notes into sentence-level `.json` files with `convert_note2sent.py`. This step uses spaCy sentence segmentation, so install the spaCy transformer English model first:
+
+```bash
+python -m spacy download en_core_web_trf
+```
+
+Then convert the notes:
+
+```bash
+python convert_note2sent.py \
+  --text_data_dir /home/FullMouth/data/dataset/test_notes/ \
+  --output_dir /home/FullMouth/data/dataset/test_notes_json/ \
+  --gpu_num 0 \
+  --combined_sentences True
+```
+
+
 ### Stage A training input
 
 `LLMs_prompt_generation.py` expects a directory of `.json` files. Each file should contain a list of sentence records like this:
