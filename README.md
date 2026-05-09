@@ -10,7 +10,7 @@ The pipeline is designed for local model execution. Models are loaded from disk 
 ## Pipeline overview
 
 ```text
-Raw or annotated notes
+Raw or annotated notes in sentence-level JSON format
         │
         ├── Stage A: Prompt generation
         │       LLMs_prompt_generation.py
