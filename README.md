@@ -1,5 +1,9 @@
 # FullMouth LLM NER Pipeline
 
+[![arXiv](https://img.shields.io/badge/arXiv-2401.12345-b31b1b.svg)](https://arxiv.org/abs/2605.04221)
+[![GitHub](https://img.shields.io/github/license/FullMouth/LLM-NER)](https://github.com/FullMouth/LLM-NER/blob/main/LICENSE)
+
+
 FullMouth is a two-stage pipeline for extracting dental named entities from clinical notes with locally hosted large language models (LLMs). It uses Hugging Face `transformers` to generate entity-specific extraction prompts, validate those prompts, and then apply the selected prompts to sentence-level clinical-note data.
 
 The pipeline is designed for local model execution. Models are loaded from disk with `local_files_only=True`, so you must have the required model checkpoints available under the configured `model_root`.
