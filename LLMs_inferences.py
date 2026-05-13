@@ -14,10 +14,6 @@ def main(model_dir):
     src_model_dir_path = os.path.join(args.dst_root, args.version, target_dir)
     print(f'Source model dir path: {src_model_dir_path!r}')
 
-    instruct_prompt_dict_fp = os.path.join(src_model_dir_path, 'instruct_prompt_dict.json')
-    assert os.path.exists(instruct_prompt_dict_fp), f"File not found: {instruct_prompt_dict_fp}"
-    instruct_dict = load_json(instruct_prompt_dict_fp)
-
     # Configure logging
     post_fix = f'{args.num_of_instructions}instructs{str(args.validation_threshold).replace(".", "")}'
     result_type_dir = f'{args.result_type_dir}_{post_fix}'
@@ -44,8 +40,10 @@ def main(model_dir):
 
     # instruction prompt preparation
     selected_prompt_fp = os.path.join(src_model_dir_path, f'selected_prompt_{post_fix}.json')
-
     if not os.path.exists(selected_prompt_fp):
+        instruct_prompt_dict_fp = os.path.join(src_model_dir_path, 'instruct_prompt_dict.json')
+        assert os.path.exists(instruct_prompt_dict_fp), f"File not found: {instruct_prompt_dict_fp}"
+        instruct_dict = load_json(instruct_prompt_dict_fp)
         instruct_dict_selected = instruct_prompt_preparation(args, instruct_dict)
         write_json(instruct_dict_selected, selected_prompt_fp)
     else:

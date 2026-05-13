@@ -89,14 +89,14 @@ HALU  = 'Hallu'
 #                     "gpt-4o":"gpt-4o",
 #                     }
 
-label_fp = r'./label_v4_1.json'
+label_fp = r'./label_v4.json'
 COMMENTS = 'comments'
 DESC = 'desc'
 IS_INCLUDE = 'is_include'
 
 class FM_label:
     def __init__(self):
-        label_fp = r'./label_v4_1.json'
+        label_fp = r'./label_v4.json'
         assert os.path.exists(label_fp), f"Label file not found at {label_fp}. Please ensure the label file exists."
         self.gold_entity_dict = load_json(label_fp)
         self.gold_entity_desc_dict = {}

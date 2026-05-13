@@ -1,0 +1,30 @@
+{
+    "Age": "Numerical expressions indicating a patient's age, such as **'56 y/o,'** **'25 years old,'** or **'infant'**.",
+    "Race": "Explicit mentions of a patient's racial identity, e.g., 'White,' 'Chinese,' or 'African American'—not including ethnicity terms such as 'Hispanic,' 'Latino,' 'Latina,' 'Latinx,' or 'Hispanic/Latino.'",
+    "Ethnicity": "Explicitly stated ethnicity information, such as **'Hispanic'** or **'Latino'**.",
+    "Sex": "Explicitly stated gender-related terms, including **'Male,'** **'Female,'** or **'Transgender'**.",
+    "Perio Diagnoses": "Specific periodontal health conditions or diagnoses, e.g., **'Periodontitis,'** **'Gingivitis,'** or **'Gingival Health'**.",
+    "Stage": "Severity classification for periodontitis, expressed as **Stage I**, **Stage II**, **Stage III**, or **Stage IV**. The full expression includes the word *Stage*; omission is rare.",
+    "Grade": "Classification describing the rate or risk of periodontitis progression, expressed as **Grade A**, **Grade B**, or **Grade C**. The full expression includes the word *Grade*; omission is uncommon.",
+    "Extent": "The distribution or area affected by periodontal conditions (e.g., **Localized**, **Generalized**) in *Periodontitis* or *Gingivitis*.",
+    "Subtype": "Specific state of periodontal tissues (e.g., **Intact Periodontium**, **Reduced Periodontium**, **Past/Stable Periodontitis**, **Non-Periodontitis**) in *Gingivitis* or *Gingival Health*.",
+    "Social Factors": "Explicit references to health-impacting social behaviors, such as **smoking**, **drinking alcohol**, **tobacco use**, or **drug use**.",
+    "HbA1c Levels": "Explicit numerical mentions of **HbA1c test results**, including units when provided (e.g., **'HbA1c 6.5%'**, **'HbA1c level of 7.2%'**).",
+    "Medical History": {
+        "desc": "Entity that includes explicit references to a patient's past medical conditions, systemic diseases, surgeries, and previous medical procedures (e.g., **cancer history**, **heart disease**, **obesity**, **previous surgeries**). ",
+        "Systemic Condition": "Refers to explicit mentions of chronic or systemic diseases affecting overall health, such as **ASA status**, **heart disease**, **diabetes**, or **obesity**.",
+        "Family History Disease": "Refers to explicit references to a patient's **family medical history** or **inherited conditions**.",
+        "Previous Medical Procedure": "Specific references to any **prior medical treatments**, **surgeries**, or **procedures** the patient has undergone."
+    },
+    "Medications": {
+        "desc": "Entity that includes specific mentions of **current or past medications**, including usage and allergies.",
+        "Medication Allergy": "Explicit mentions of **allergic reactions** to medications (e.g., “penicillin allergy”). Does not include statements such as **NKDA** (No Known Drug Allergies).",
+        "Medication Taken": "Explicit mentions of medications or supplements currently taken, prescribed, or previously used by the patient (e.g., 'taking metformin,' 'on antibiotics,' 'vitamin B12'), not including any suggestions, recommendations, or prescriptions."
+    },
+    "Home Care": {
+        "desc": "Entity that includes specific oral hygiene behaviors practiced by the patient (e.g., **brushing frequency**, **flossing**, **fluoride toothpaste usage**, **mouthwash usage**). ",
+        "Brushing freq": "Specific mentions of **toothbrushing frequency or habits**, such as brushing once, twice, or multiple times per day.",
+        "Flossing": "Specific mentions of flossing frequency or habits, such as daily or occasional flossing, including use of proxy brush or Waterpik.",
+        "Other Home Care": "Specific mentions of oral hygiene frequency or habits beyond brushing and flossing, not including any suggestions or advice."
+    }
+}
