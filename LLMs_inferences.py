@@ -11,17 +11,17 @@ from fullmouth_util import (
 
 def main(model_dir):
     target_dir = get_model_name(args.base_model, args)
-    src_model_dir_path = os.path.join(args.dst_root, args.version, target_dir)
-    print(f'Source model dir path: {src_model_dir_path!r}')
+    src_dir_path = args.src_dir_path or os.path.join(args.dst_root, args.version, target_dir)
+    print(f'Source model dir path: {src_dir_path!r}')
 
     # Configure logging
     post_fix = f'{args.num_of_instructions}instructs{str(args.validation_threshold).replace(".", "")}'
     result_type_dir = f'{args.result_type_dir}_{post_fix}'
-    result_dir_path = os.path.join(src_model_dir_path, result_type_dir)
+    result_dir_path = os.path.join(src_dir_path, result_type_dir)
     print(f'Results will be saved in {result_dir_path!r}')
     Path(result_dir_path).mkdir(parents=True, exist_ok=True)
 
-    log_fp = os.path.join(src_model_dir_path, f'pred_{result_type_dir}.log')
+    log_fp = os.path.join(src_dir_path, f'pred_{result_type_dir}.log')
     print(log_fp)
     setup_logger(log_fp)
     log_msg(args)
@@ -39,9 +39,9 @@ def main(model_dir):
     print(run_name)
 
     # instruction prompt preparation
-    selected_prompt_fp = os.path.join(src_model_dir_path, f'selected_prompt_{post_fix}.json')
+    selected_prompt_fp = os.path.join(src_dir_path, f'selected_prompt_{post_fix}.json')
     if not os.path.exists(selected_prompt_fp):
-        instruct_prompt_dict_fp = os.path.join(src_model_dir_path, 'instruct_prompt_dict.json')
+        instruct_prompt_dict_fp = os.path.join(src_dir_path, 'instruct_prompt_dict.json')
         assert os.path.exists(instruct_prompt_dict_fp), f"File not found: {instruct_prompt_dict_fp}"
         instruct_dict = load_json(instruct_prompt_dict_fp)
         instruct_dict_selected = instruct_prompt_preparation(args, instruct_dict)
@@ -123,7 +123,9 @@ if __name__ == "__main__":
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num
 
-    if args.model_name:
+    if args.model_path:
+        model_dir = args.model_path
+    elif args.model_name:
         model_dir = os.path.join(model_root, args.version, args.model_name)
     else:
         model_dir = os.path.join(model_root, args.base_model)

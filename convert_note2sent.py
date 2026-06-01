@@ -1,29 +1,38 @@
-# /usr/bin/env python
+#!/usr/bin/env python
 from pathlib import Path
 import os
-from glob import glob
 import argparse
 from tqdm import tqdm
-import spacy
-from spacy.util import is_package
 
-from fullmouth_util import find_entity_locations, write_json
+# Parse args FIRST so we can set CUDA env vars before any CUDA-touching import
+def parse_args(args_list=None):
+    parser = argparse.ArgumentParser(description="Text to sentence conversion script via spaCy")
+    parser.add_argument("--text_data_dir", type=str)
+    parser.add_argument("--output_dir", type=str, default=None)
+    parser.add_argument("--gpu_num", type=str, required=True)
+    parser.add_argument("--st_idx",  type=int, default=0)
+    parser.add_argument("--end_idx", type=int, default=None)
+    parser.add_argument("--combined_sentences", type=bool, default=False)
+    return parser.parse_args(args_list)
 
-def main(args):
+def main():
+    args = parse_args()
 
+    # MUST happen before importing spacy / calling require_gpu
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num
 
-    spacy.prefer_gpu()
+    import spacy
+    from spacy.util import is_package
+    spacy.require_gpu()   # now sees only the GPU you selected (as device 0)
+
+    from fullmouth_util import find_entity_locations, write_json
+
     model_name = "en_core_web_trf"
-
-    if is_package(model_name):
-        nlp = spacy.load(model_name)
-        print(f"Success: '{model_name}' is loaded and ready to use.")
-    else:
-        raise ValueError(f"Warning: '{model_name}' is not available in your environment.\n"
-                         f"Please install it by running: python -m spacy download {model_name}")
-
+    if not is_package(model_name):
+        raise ValueError(f"'{model_name}' is not installed. Run: python -m spacy download {model_name}")
+    nlp = spacy.load(model_name)
+    print(f"Success: '{model_name}' is loaded and ready to use.")
 
     src_txt_root = args.text_data_dir
     src_txt_fp_ls = list(Path(src_txt_root).glob('*.txt'))
@@ -47,24 +56,13 @@ def main(args):
     print(f'Output JSON files are saved in {output_dir}.')
 
 
-def parse_args(args_list=None):
-    # Argument parser setup
-    parser = argparse.ArgumentParser(description="Text to sentence conversion script via spaCy")
-    parser.add_argument("--text_data_dir", type=str, help="Target directory containing text notes")
-    parser.add_argument("--output_dir", type=str, default=None, help="Output directory for JSON files (default: same as input directory)")
-    parser.add_argument("--gpu_num", type=str, required=True, help="GPU number (e.g., '0')")
-    parser.add_argument("--st_idx",  type=int, default=0,  help="Start index (e.g., '0')")
-    parser.add_argument("--end_idx", type=int, default=None, help="End index (e.g., '100')")
-    parser.add_argument("--combined_sentences", type=bool, default=False, help="Whether to combine short sentences (<100 characters) into longer ones (default: False)")
-
-    args = parser.parse_args(args_list)
-    return args
 
 if __name__ == "__main__":
-    args = parse_args()
-    main(args)
+    main()
 
 '''
-python convert_note2sent.py --text_data_dir "/home/FullMouth/data/dataset/training_notes/" --gpu_num 0
+17578
+python convert_note2sent.py --text_data_dir "/home/FullMouth/data/notes/UTH_2025_notes17578" --gpu_num 1 
+
 python convert_note2sent.py --text_data_dir "/home/FullMouth/data/dataset/test_notes/" --gpu_num 0 --combined_sentences True
 '''

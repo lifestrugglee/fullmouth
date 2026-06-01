@@ -18,11 +18,23 @@ fm_label = FM_label()
 
 # ########################################################################################
 # Data Classes
-@dataclass(slots=True)
+@dataclass(slots=True, eq=False)
 class EntityData:
     """Structured container for entity extraction data."""
     sentence: str
     entity_ls: List[str]
+    
+    # --- Equality ---
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, EntityData):
+            return NotImplemented
+        return (
+            self.sentence.strip() == other.sentence.strip()
+            and self.entity_ls == other.entity_ls
+        )
+
+    def __hash__(self):
+        return hash((self.sentence.strip(), tuple(self.entity_ls)))
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format for LLM prompts."""
@@ -1511,6 +1523,7 @@ def parse_args(args_list=None):
     parser.add_argument("--model_name", type=str, default=None, help="Name of the model with specific settings")
     parser.add_argument("--model_path", type=str, default=None, help="Path to the model directory")
     parser.add_argument("--model_input_limit_ratio", type=float, default=0.8, help="Ratio of model input limit to use for batch generation")
+    parser.add_argument("--src_dir_path", type=str, default=None, help="Directory containing instruction data files")
 
     parser.add_argument("--train_data_path", type=str, default=None, help="Path to the training json files")
     parser.add_argument("--dst_root", type=str, default=r"/home/FullMouth/data", help="Directory to save processed data")
