@@ -452,31 +452,6 @@ def replace_msg_ls_to_user(msg_ls: List[dict]) -> List[dict]:
     msg_ls = [{"role": "user", "content":  "\n".join(all_content_ls)}]
     return msg_ls
 
-
-# def replace_msg_ls_to_user(msg_ls: List[dict]) -> List[dict]:
-#     """
-#     Some models require user/assistant only
-#     """
-#     for i, msg in enumerate(msg_ls):
-#         if msg['role'] == 'system':
-#             msg_ls[i]['role'] = 'user'
-    
-#     # Combine consecutive messages with the same role into one message
-#     combined_msg_ls = []
-#     for msg in msg_ls:
-#         if not combined_msg_ls:
-#             combined_msg_ls.append(msg)
-#         else:
-#             last_msg = combined_msg_ls[-1]
-#             if msg['role'] == last_msg['role']:
-#                 # Combine the content of the messages
-#                 combined_msg_ls[-1]['content'] += '\n' + msg['content']
-#             else:
-#                 combined_msg_ls.append(msg)
-    
-#     return combined_msg_ls
-
-
 def revised_entity_list(entity_ls, add_stop_token=True, isDebug=False):
     """
     Removes duplicate or highly similar entities from a list of dictionaries 
@@ -891,25 +866,32 @@ Return only a single token: TRUE or FALSE.
 Do not include any explanation, justification, or additional text."""
     return sys_prompt
 
-def verifyInstruction(instruct_prompt: str, target_entity: str, isDebug=False, return_confidence=False) -> bool:
+def verifyInstruction(instruct_prompt: str, target_entity: str, include_examples: bool = True, isDebug=False, return_confidence=False) -> bool:
     '''
     Verify if the instruction prompt meets all specified criteria.
     Args:
         instruct_prompt: The instruction prompt to verify
         target_entity: The target entity type
+        include_examples: Whether to include examples in the verification
         isDebug: Enable debug output
         return_confidence: If True, return confidence scores along with boolean results
     Returns:
         bool: True if the instruction prompt meets all criteria, False otherwise
     '''
     assert tokenizer is not None and model is not None, "Tokenizer and model must be initialized."
+    example_criteria = []
+    if include_examples:
+        example_criteria = [
+            "It is purely descriptive and does not include any examples, sample inputs, or sample outputs.",
+            "It does not reference, quote, paraphrase, or imply access to any user-provided example data.",
+            "It does not include illustrative Examples.",
+        ]
+
     criteria_ls = [
         "It is clear, concise, and written as a self-contained instruction.",
         "It is complete, explicitly describing what task the model should perform and how it should behave.",
-        "It is fully written and not truncated, unfinished, or abruptly cut off.",
-        "It is purely descriptive and does not include any examples, sample inputs, or sample outputs.",
-        "It does not reference, quote, paraphrase, or imply access to any user-provided example data.",
-        "It does not include illustrative Examples.",
+        "It is fully written and not truncated, unfinished, or abruptly cut off.",] + \
+        example_criteria + [
         "It avoids duplicated, redundant, or unnecessary content.",
         f"It provides clear guidance on inclusion and exclusion criteria for identifying {target_entity}.",
         f"It is functionally appropriate for guiding a language model to extract {target_entity}-related expressions from clinical or dental notes.",
@@ -950,7 +932,7 @@ When revising the prompt:
 - Ensure the focus remains on identifying {TARGET_ENTITY}-related expressions in clinical documentation.
 - Include clear descriptive guidance on inclusion and exclusion criteria, clinical shorthand, and ambiguity handling when relevant.
 - Avoid excessive or rigid input/output formatting unless it is essential for task performance.""" + no_example_prompt + """\n
-The revised instruction prompt must be suitable for direct use by a language model that has not seen any example data but must behave consistently with it.
+- The revised instruction prompt must be suitable for direct use by a language model that has not seen any example data but must behave consistently with it.
 
 Output:
 Return only the revised, finalized instruction prompt.
