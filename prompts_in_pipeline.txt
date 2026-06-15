@@ -131,7 +131,15 @@ Return TRUE only if the instruction prompt satisfies the following conditions.
 Return FALSE If the condition is not met.
 
 Assessment Criteria:
-{CRITERIA}
+- It is clear, concise, and written as a self-contained instruction.
+- It is complete, explicitly describing what task the model should perform and how it should behave.
+- It is fully written and not truncated, unfinished, or abruptly cut off.
+- It is purely descriptive and does not include any examples, sample inputs, or sample outputs.
+- It does not reference, quote, paraphrase, or imply access to any user-provided example data.
+- It does not include illustrative Examples.
+- It avoids duplicated, redundant, or unnecessary content.
+- It provides clear guidance on inclusion and exclusion criteria for identifying {target_entity}.
+- It is functionally appropriate for guiding a language model to extract {target_entity}-related expressions from clinical or dental notes.
 
 Output Format:
 Return only a single token: TRUE or FALSE.
